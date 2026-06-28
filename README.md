@@ -1,6 +1,6 @@
 # Design\_HVAC\_system
 
-Hệ thống giám sát và điều khiển HVAC/IAQ theo kiến trúc điều khiển tập trung: ESP32 đọc cảm biến thật, server Raspberry Pi xử lý MQTT + rule-based control, dashboard React hiển thị telemetry thời gian thực.
+Hệ thống giám sát và điều khiển HVAC theo kiến trúc điều khiển tập trung: ESP32 đọc cảm biến thật, server Raspberry Pi xử lý MQTT + rule-based control, dashboard React hiển thị telemetry thời gian thực.
 
 \---
 
@@ -17,7 +17,7 @@ mqtt-subscriber (Python / ThreadingHTTPServer)
   ├── Lưu TimescaleDB
   ├── REST API :5000
   └── ZoneManager (Rule-Based Control)
-        │  MQTT  topic: remote-control/{device\_id}
+        │  MQTT  topic: remote-control/{device\\\_id}
         ▼
 ESP32 nhận lệnh điều khiển
         
@@ -40,9 +40,9 @@ Dashboard React (Vite) ←── /api proxy ──→ REST API
 
 |Policy|Thời gian|Setpoint nhiệt độ|CO₂ Max|Quạt|
 |-|-|-|-|-|
-|`working\_hours`|8:00 – 22:00|24.5°C|700 ppm|auto|
-|`night\_eco`|22:00 – 8:00|26.5°C|950 ppm|low|
-|`free\_cooling`|bất kỳ|—|—|on (thông gió)|
+|`working\\\_hours`|8:00 – 22:00|24.5°C|700 ppm|auto|
+|`night\\\_eco`|22:00 – 8:00|26.5°C|950 ppm|low|
+|`free\\\_cooling`|bất kỳ|—|—|on (thông gió)|
 
 \---
 
@@ -56,14 +56,14 @@ Dashboard React (Vite) ←── /api proxy ──→ REST API
 |LCD 1602 I²C|I²C (Wire)|SDA=10, SCL=11|
 |WS2812B (LED onboard)|—|GPIO 48|
 
-Sơ đồ kết nối: [`docs/hardware\_design\_guide.md`](docs/hardware_design_guide.md)
+Sơ đồ kết nối: [`docs/hardware\\\_design\\\_guide.md`](docs/hardware_design_guide.md)
 
 \---
 
 ## Cấu trúc thư mục
 
 ```
-esp32/HVAC\_Sensor\_Node/     Firmware Arduino + thư viện local (src/)
+esp32/HVAC\\\_Sensor\\\_Node/     Firmware Arduino + thư viện local (src/)
 server/mqtt-subscriber/     subscriber.py — MQTT, TimescaleDB, REST API, ZoneManager
 src/                        Frontend React (Vite + TypeScript)
 docs/                       Tài liệu bổ sung
@@ -80,8 +80,8 @@ nginx.conf                  Proxy /api → Python server, static → React build
 ### Server (Docker)
 
 ```bash
-git clone https://github.com/trinhquan0710/Design\_HVAC\_system.git
-cd Design\_HVAC\_system
+git clone https://github.com/trinhquan0710/Design\\\_HVAC\\\_system.git
+cd Design\\\_HVAC\\\_system
 docker compose up -d --build
 ```
 
@@ -96,14 +96,14 @@ docker compose -p hvac -f docker-compose.alt.yml up -d --build
 
 ### Firmware ESP32
 
-Sửa đầu file `esp32/HVAC\_Sensor\_Node/HVAC\_Sensor\_Node.ino`:
+Sửa đầu file `esp32/HVAC\\\_Sensor\\\_Node/HVAC\\\_Sensor\\\_Node.ino`:
 
 ```cpp
-#define WIFI\_SSID        "TenMangWiFi"
-#define WIFI\_PASSWORD    "MatKhauWiFi"
-#define MQTT\_SERVER      "192.168.1.100"   // IP của server
-#define MQTT\_PORT        1883
-#define MQTT\_DEVICE\_ID   "indoor-01"
+#define WIFI\\\_SSID        "TenMangWiFi"
+#define WIFI\\\_PASSWORD    "MatKhauWiFi"
+#define MQTT\\\_SERVER      "192.168.1.100"   // IP của server
+#define MQTT\\\_PORT        1883
+#define MQTT\\\_DEVICE\\\_ID   "indoor-01"
 ```
 
 Nạp bằng Arduino IDE, chọn board **ESP32S3 Dev Module**. Thư viện đã có sẵn trong `src/`.
@@ -122,8 +122,8 @@ npm run dev
 
 |Topic|Hướng|Payload chính|
 |-|-|-|
-|`sensor/indoor`|ESP32 → Server|`temp`, `humidity`, `co2`, `dust`, `device\_id`|
-|`remote-control/{device\_id}`|Server → ESP32|`power`, `temp`, `operation\_mode`, `fan\_power`, `co2\_max`, `humidity\_max`|
+|`sensor/indoor`|ESP32 → Server|`temp`, `humidity`, `co2`, `dust`, `device\\\_id`|
+|`remote-control/{device\\\_id}`|Server → ESP32|`power`, `temp`, `operation\\\_mode`, `fan\\\_power`, `co2\\\_max`, `humidity\\\_max`|
 
 \---
 
