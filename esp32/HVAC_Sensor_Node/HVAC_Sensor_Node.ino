@@ -8,9 +8,9 @@
  * Tính năng chính:
  *   1. Đọc dữ liệu môi trường thực tế: CO2, Nhiệt độ, Độ ẩm (SCD30) và Bụi mịn PM2.5 (PMS7003).
  *   2. Hiển thị thông số trực quan lên màn hình LCD I2C (bus riêng GPIO10/11).
- *   3. Gửi dữ liệu telemetry định kỳ lên MQTT Broker để Server AI (DRL Model) chạy mô phỏng
+ *   3. Gửi dữ liệu telemetry định kỳ lên MQTT Broker để Server xử lý rule-based control
  *      và so sánh hiệu năng điện năng tiêu thụ với Baseline.
- *   4. Lắng nghe phản hồi từ AI Server để hiển thị trạng thái điều khiển mô phỏng (Setpoint, Damper) lên LCD.
+ *   4. Lắng nghe phản hồi từ Server để hiển thị trạng thái điều khiển (Setpoint) lên LCD.
  */
 
 #include <Wire.h>
@@ -34,7 +34,7 @@
 #define MQTT_PORT        1885                  // Cổng MQTT host (docker-compose.alt.yml)
 #define MQTT_DEVICE_ID   "indoor-01"           // ID thiết bị
 #define MQTT_PUB_TOPIC   "sensor/indoor"       // Topic gửi dữ liệu cảm biến
-#define MQTT_SUB_TOPIC   "remote-control/#"    // Topic nhận phản hồi điều khiển từ AI (để hiển thị LCD)
+#define MQTT_SUB_TOPIC   "remote-control/#"    // Topic nhận lệnh điều khiển từ server (để hiển thị LCD)
 
 // 3. Chân GPIO — theo schematic PCB (ESP32-S3-N16R8)
 //    LCD I2C : bus riêng GPIO10/11
@@ -47,8 +47,8 @@
 #define SCD_SCL          9     // SCD30 SCL (Physical Pin 15)
 #define PIN_RGB_WS2812   48    // WS2812 onboard ESP32-S3 dev module
 
-#define PMS_RX           16    // ESP32 RX <- PMS TX (Physical Pin 9)
-#define PMS_TX           17    // ESP32 TX -> PMS RX (Physical Pin 10)
+#define PMS_RX           17    // ESP32 RX <- PMS TX (Physical Pin 9)
+#define PMS_TX           16    // ESP32 TX -> PMS RX (Physical Pin 10)
 
 // =========================================================================
 // 🔄 THÔNG SỐ VÀ BIẾN TOÀN CỤC
@@ -67,8 +67,8 @@ float currentHum = 50.0;
 float currentCO2 = 400.0;
 float currentPM25 = 0.0;
 
-// Biến lưu trữ trạng thái mô phỏng nhận về từ AI Server
-float aiSetpoint = 25.0;
+// Biến lưu trữ trạng thái điều khiển nhận về từ Server
+float setpoint = 25.0;
 float aiDamper = 0.3;
 bool aiPower = true;
 String aiOperationMode = "auto";
@@ -84,7 +84,7 @@ const unsigned long MQTT_RETRY_INTERVAL = 5000; // Thử lại MQTT sau mỗi 5 
 // Quản lý hiển thị LCD (Chuyển đổi màn hình thông tin)
 unsigned long lastLcdSwitchTime = 0;
 const unsigned long LCD_SWITCH_INTERVAL = 3000; // Đổi màn hình LCD mỗi 3 giây
-int lcdScreenState = 0;                         // 0: Hiện thông số thực tế, 1: Hiện mô phỏng AI
+int lcdScreenState = 0;                         // 0: Hiện thông số thực tế, 1: Hiện trạng thái điều khiển
 
 // =========================================================================
 // 📺 HÀM ĐIỀU KHIỂN HIỂN THỊ LCD
@@ -102,7 +102,7 @@ void updateLCD() {
     lcd.setCursor(0, 1);
     lcd.printf("PM25:%3.0f H:%4.1f%%", currentPM25, currentHum);
   } else {
-    // --- MÀN HÌNH 2: HIỂN THỊ TRẠNG THÁI KẾT NỐI & AI ---
+    // --- MÀN HÌNH 2: HIỂN THỊ TRẠNG THÁI KẾT NỐI ---
     if (!receivedAiState) {
       lcd.setCursor(0, 0);
       if (mqttClient.connected()) {
@@ -111,9 +111,9 @@ void updateLCD() {
         lcd.printf("ID:%s MQTT:ERR", MQTT_DEVICE_ID);
       }
       lcd.setCursor(0, 1);
-      lcd.print("Waiting AI server");
+      lcd.print("Waiting server");
     } else {
-      // Dòng 0: AI:XX.X Mode:XXX
+      // Dòng 0: SP:XX.X Mode:XXX
       lcd.setCursor(0, 0);
       String modeUpper = aiOperationMode;
       modeUpper.toUpperCase();
@@ -122,7 +122,7 @@ void updateLCD() {
       else if (modeUpper == "HEAT") modeUpper = "HET";
       else if (modeUpper == "OFF") modeUpper = "OFF";
       
-      lcd.printf("AI:%4.1fC AC:%-3s", aiSetpoint, modeUpper.c_str());
+      lcd.printf("SP:%4.1fC AC:%-3s", setpoint, modeUpper.c_str());
       
       // Dòng 1: Dmp:XX% Fan:XXX
       lcd.setCursor(0, 1);
@@ -197,12 +197,12 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   Serial.printf("\n[MQTT Sub] Nhan tin nhan tu [%s]: %s\n", topic, message);
 
-  // Phân tích trạng thái mô phỏng AI gửi về để hiển thị lên LCD
+  // Phân tích trạng thái điều khiển gửi về để hiển thị lên LCD
   char* tempPtr = strstr(message, "\"temp\"");
   if (tempPtr != NULL) {
     char* valPtr = strchr(tempPtr, ':');
     if (valPtr != NULL) {
-      aiSetpoint = atof(valPtr + 1);
+      setpoint = atof(valPtr + 1);
       receivedAiState = true;
     }
   }
@@ -348,7 +348,7 @@ void setup() {
   lcd.init();
   lcd.backlight();
   lcd.setCursor(0, 0);
-  lcd.print("Smart HVAC Node ");
+  lcd.print("HVAC Node ");
   lcd.setCursor(0, 1);
   lcd.print("Initializing... ");
 
@@ -433,7 +433,7 @@ void loop() {
   // Luân phiên chuyển đổi màn hình hiển thị LCD sau mỗi 3 giây
   if (now - lastLcdSwitchTime >= LCD_SWITCH_INTERVAL) {
     lastLcdSwitchTime = now;
-    lcdScreenState = 1 - lcdScreenState; // Toggle giữa 0 (Sensor) và 1 (AI Simulation)
+    lcdScreenState = 1 - lcdScreenState; // Toggle giữa 0 (Sensor) và 1 (Control State)
     updateLCD();
   }
 }

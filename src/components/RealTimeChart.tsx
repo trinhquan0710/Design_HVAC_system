@@ -44,7 +44,7 @@ export const RealTimeChart: React.FC<RealTimeChartProps> = ({ data }) => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400">SO SÁNH ĐIỆN NĂNG TIÊU THỤ TÍCH LŨY</h3>
-          <p className="text-[10px] text-slate-500 font-semibold tracking-wide mt-1">Đối chiếu năng lượng tiêu hao: Hệ thống AI vs Baseline truyền thống (kWh)</p>
+          <p className="text-[10px] text-slate-500 font-semibold tracking-wide mt-1">Đối chiếu năng lượng tiêu hao: Hệ thống Rule-Based vs Baseline truyền thống (kWh)</p>
         </div>
       </div>
 
@@ -83,7 +83,7 @@ export const RealTimeChart: React.FC<RealTimeChartProps> = ({ data }) => {
             <Area
               type="monotone"
               dataKey="energy"
-              name="Điện năng AI tối ưu"
+              name="Điện năng Rule-Based"
               stroke="#10b981"
               strokeWidth={2.5}
               fillOpacity={1}

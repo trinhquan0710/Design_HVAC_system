@@ -1,4 +1,4 @@
-# Project Summary — Smart HVAC (Không AI)
+# Project Summary — Design_HVAC_system
 
 ## Mô tả
 
